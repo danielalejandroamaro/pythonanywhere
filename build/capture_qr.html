@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Document</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+</head>
+<body style="position: absolute;top: 0;left: 0;right: 0;bottom: 0">
+<div id="app" style="position: absolute;top: 0;left: 0;right: 0;bottom: 0">
+  <v-app>
+    <v-app-bar app>
+      <v-tabs
+          v-model="active_tab"
+          centered
+          class="ml-n9"
+          color="grey darken-1"
+      >
+        <v-tab href="/index" link>Home</v-tab>
+        <v-tab href="/list" link>Cola</v-tab>
+        <v-tab href="/capture_qr" link>lector de QR</v-tab>
+      </v-tabs>
+    </v-app-bar>
+    <v-main class="d-flex flex-row overflow-auto"
+            style="height: 100%"
+    >
+      <v-container
+          class="flex-grow-1 overflow-auto d-flex flex-column align-stretch justify-start"
+          style="height: 100%"
+      >
+        <div ref="videoContainer" class="video-container">
+          <video ref="qr-video" autoplay></video>
+          <canvas ref="qr-canvas" style="display: none"></canvas>
+        </div>
+        <!--        <video ref="qr-video" autoplay></video>-->
+        <!--        <canvas ref="qr-canvas" style="display: none"></canvas>-->
+      </v-container>
+    </v-main>
+  </v-app>
+
+</div>
+<h2 id="response"></h2>
+
+</body>
+<style>
+    .video-container {
+        position: relative;
+        top: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    video,
+    canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+</style>
+</html>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.0.2/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+
+<script>
+    var app = new Vue({
+        el: '#app',
+        vuetify: new Vuetify(),
+        data: () => ({
+            scanning: false,
+            response: "",
+            active_tab: null,
+            height_: '100%'
+        }),
+        beforeMount() {
+            this.active_tab = "/capture_qr";
+        },
+        methods: {
+            send_data(code) {
+                location.assign(`/index?qr=${code}`);
+                // fetch("/read_qr", {
+                //     method: "POST",
+                //     headers: {
+                //         "Content-Type": "application/json",
+                //     },
+                //     body: JSON.stringify(
+                //         {data: code.data}
+                //     ),
+                // })
+                //     .then((response) => {
+                //         return response.json();
+                //     })
+                //     .then((data) => {
+                //         this.response = data.data;
+                //     })
+                //     .catch((error) => {
+                //         this.scanning = false;
+                //     })
+            },
+            adjustVideoSize() {
+                const canvas = this.$refs["qr-canvas"];
+                const video = this.$refs["qr-video"];
+                const videoContainer = this.$refs["videoContainer"];
+                const {videoWidth, videoHeight} = video;
+                const videoAspectRatio = videoWidth / videoHeight;
+                const containerWidth = videoContainer.clientWidth;
+                const containerHeight = videoContainer.clientHeight;
+                const containerAspectRatio = containerWidth / containerHeight;
+
+                if (videoAspectRatio > containerAspectRatio) {
+                    video.style.width = `${containerWidth}px`;
+                    video.style.height = `${containerWidth / videoAspectRatio}px`;
+                } else {
+                    video.style.width = `${containerHeight * videoAspectRatio}px`;
+                    video.style.height = `${containerHeight}px`;
+                }
+
+                canvas.width = video.clientWidth;
+                canvas.height = video.clientHeight;
+            },
+            tick() {
+                this.adjustVideoSize()
+                const video = this.$refs["qr-video"];
+                const canvasElement = this.$refs["qr-canvas"];
+                const canvas = canvasElement.getContext("2d");
+
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    canvasElement.height = video.videoHeight;
+                    canvasElement.width = video.videoWidth;
+                    canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                    const imageData = canvas.getImageData(
+                        0,
+                        0,
+                        canvasElement.width,
+                        canvasElement.height
+                    );
+                    const code = jsQR(
+                        imageData.data,
+                        imageData.width,
+                        imageData.height,
+                        {
+                            inversionAttempts: "dontInvert",
+                        }
+                    );
+                    if (code?.data) {
+                        if (!this.scanning) {
+                            this.scanning = true;
+                            this.send_data(code.data);
+                        }
+                    }
+                }
+                if (!this.scanning) {
+                    requestAnimationFrame(this.tick);
+                }
+            },
+            // getWindowHeight() {
+            //     if (this.height > 0) {
+            //         this.height_ = `${this.height}px`;
+            //         return;
+            //     }
+            //
+            //     let component = document.getElementById(this.componentName);
+            //     const footer = this.$refs['footer'];
+            //     const header = this.$refs['header'];
+            //     if (component) {
+            //         let footer_size = footer ? footer.$el.clientHeight : 0;
+            //         // let header_size = header ? header.clientHeight : 0;
+            //         let header_size = header ? header.$el.clientHeight : 0;
+            //         const availableSpace = component.clientHeight;
+            //         this.height_ = `${availableSpace - footer_size - header_size}px`;
+            //     }
+            // },
+        },
+        beforeDestroy() {
+            clearInterval(this.interval);
+        },
+        mounted() {
+            this.adjustVideoSize();
+            // this.interval = setInterval(this.getWindowHeight, 333);
+            const video = this.$refs["qr-video"];
+            navigator
+                .mediaDevices
+                .getUserMedia(
+                    {video: {facingMode: "environment"}}
+                )
+                .then((stream) => {
+                    video.srcObject = stream;
+                    video.setAttribute("playsinline", true); // Para que se reproduzca en iOS sin pantalla completa
+                    video.play();
+                    requestAnimationFrame(this.tick);
+                });
+        }
+    });
+</script>

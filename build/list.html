@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  <title>Title</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+</head>
+<body style="position: absolute;top: 0;left: 0;right: 0;bottom: 0">
+<div id="app">
+  <v-app>
+    <v-app-bar app>
+      <v-tabs
+          v-model="active_tab"
+          centered
+          color="grey darken-1"
+      >
+        <v-tab
+            href="/index"
+            target="/index"
+            :exact-path="true"
+        > Home
+        </v-tab>
+        <v-tab
+            href="/list"
+            target="/list"
+            :exact-path="true"
+        > Cola
+        </v-tab>
+        <v-tab
+            href="/capture_qr"
+            target="/capture_qr"
+            :exact-path="true"
+        > lector de QR
+        </v-tab>
+      </v-tabs>
+    </v-app-bar>
+    <v-main>
+      <v-container>
+        <v-select
+            class="grow-1 mr-3"
+            v-model="product_id"
+            @change="filter_by_product"
+            @input="filter_by_product"
+            :items="products"
+            item-text="name"
+            item-value="id"
+            attach
+            chips
+            label="products"
+        ></v-select>
+      </v-container>
+      <v-container>
+        <v-row>
+          <v-col v-for="item in queue" cols="6" md="3">
+            <v-card elevation="2">
+              <v-card-title class="py-3">
+                <v-avatar
+                    color="primary"
+                    size="42"
+                >
+                  <span class="white--text text-h5">{{item.index}}</span>
+                </v-avatar>
+                <span class="ml-3 pr-3 subtitle-1">
+                  {{item["persone_id.name"]}}
+                  <b>
+                  ({{item.cupet}})
+                  </b>
+                </span>
+              </v-card-title>
+              <v-card-text>
+                <span>
+                {{item.created_at|dateFormat}}
+              </span>
+                <span>{{item["car_id.chapa"]}}</span>
+<!--                <pre>{{item}}</pre>-->
+              </v-card-text>
+              <v-card-actions>
+                <v-btn>
+                  accept
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-main>
+  </v-app>
+</div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+<script src="https://unpkg.com/vue-router@3/dist/vue-router.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+
+<script>
+
+    // region filters...
+
+    function dateFormat(date) {
+        return date ? moment(date).format('LL') : '-'
+    }
+
+
+    function monthFormat(date) {
+        return date ? moment(date).format('MMMM, YYYY') : '-'
+    }
+
+    function timeStamp(date) {
+        return date ? moment(date).format('LLL') : '-'
+    }
+
+    function hoursMinutes(date) {
+        return date ? moment(date).format('h:mm A') : '-'
+    }
+
+    function time(date) {
+        return date ? moment(date, 'H:mm:ss').format('LT') : '-'
+    }
+
+    function dateFromNow(date) {
+        return moment(date).fromNow()
+    }
+
+    function dateFromNowUtc(date) {
+        return moment.utc(date).fromNow()
+    }
+
+    // endregion
+
+
+    var app = new Vue({
+        el: '#app',
+        vuetify: new Vuetify(),
+        filters: {
+            dateFormat
+        },
+        data: () => ({
+            active_tab: "/list",
+            queue: [],
+            products: [],
+            product_id: null
+        }),
+        beforeMount() {
+            this.active_tab = "/list";
+            console.log("beforeMount");
+            fetch(
+                "http://localhost:8010/products"
+                , {
+                    method: "GET",
+                    // mode: 'cors',
+                    // headers: {
+                    //     'Access-Control-Allow-Origin': '*',
+                    //     "Content-Type": "application/json",
+                    // }
+                }
+            ).then(
+                res => res.json()
+            ).then(
+                (data) => {
+                    this.products = data.items;
+                    this.product_id = this.products[0].id;
+                    this.fetchData()
+                }
+            ).catch(console.log)
+        },
+        methods: {
+            filter_by_product() {
+                this.fetchData()
+            },
+            fetchData() {
+                const queryParams = new URLSearchParams({product_id: this.product_id});
+                console.log("fetchData");
+                fetch(
+                    `http://localhost:8010/queue?${queryParams}`
+                    , {
+                        method: "GET"
+                    }
+                ).then(
+                    res => res.json()
+                ).then(
+                    (data) => this.queue = data.items
+                ).catch(console.log)
+                ;
+            },
+        }
+    });
+
+
+</script>
+
+<!-- v-scope value can be omitted -->
+
+</html>

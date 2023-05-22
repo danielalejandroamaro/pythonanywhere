@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  <title>Title</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+</head>
+<body style="position: absolute;top: 0;left: 0;right: 0;bottom: 0">
+
+<div id="app">
+  <v-app>
+    <v-app-bar app>
+      <v-tabs
+          v-model="active_tab"
+          centered
+          class="ml-n9"
+          color="grey darken-1"
+      >
+        <v-tab href="/index" link> Home</v-tab>
+        <v-tab href="/list" link>Cola</v-tab>
+        <v-tab href="/capture_qr" link>Lector de QR</v-tab>
+      </v-tabs>
+    </v-app-bar>
+    <v-main>
+      <v-container>
+        <v-row>
+          <v-col>
+            <v-form @submit.prevent="submitForm">
+              <v-card elevation="2">
+                <v-container>
+                  <v-row>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        md="3"
+                    >
+                      <v-text-field outlined label="chapa" v-model="chapa"></v-text-field>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        md="3"
+                    >
+                      <v-text-field outlined label="nombre" v-model="name"></v-text-field>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        md="3"
+                    >
+                      <v-text-field outlined label="codigo" v-model="codigo"></v-text-field>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                        sm="6"
+                        md="3"
+                    >
+                      <v-select
+                          v-model="product_id"
+                          :items="products"
+                          item-text="name"
+                          item-value="id"
+                          attach
+                          chips
+                          label="products"
+                          multiple
+                      ></v-select>
+                    </v-col>
+                    <v-col
+                        cols="12"
+                    >
+                      <v-text-field outlined label="telefono" v-model="telefono"></v-text-field>
+                    </v-col>
+                    <v-card-actions>
+                      <v-spacer></v-spacer>
+                      <v-btn type="submit">
+                        submit
+                      </v-btn>
+                    </v-card-actions>
+              </v-card>
+            </v-form>
+          </v-col>
+        </v-row>
+        <pre>
+        {{products}}
+      </pre>
+        <v-list dense>
+          <v-list-item v-for="item in products">
+            <v-list-item-content>
+              <v-list-item-title>
+                <pre>{{item}}</pre>
+              </v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+        </v-list>
+      </v-container>
+    </v-main>
+  </v-app>
+</div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+<script>
+    var app = new Vue({
+        el: '#app',
+        vuetify: new Vuetify(),
+        data: () => ({
+            active_tab: null,
+            chapa: '',
+            name: '',
+            codigo: '',
+            telefono: '',
+            data: [],
+            products: [],
+            product_id: [],
+        }),
+        beforeMount() {
+            this.active_tab = "/index";
+            fetch(
+                "http://localhost:8010/get_next_code"
+                , {
+                    method: "GET",
+                    // mode: 'cors',
+                    // headers: {
+                    //     'Access-Control-Allow-Origin': '*',
+                    //     "Content-Type": "application/json",
+                    // }
+                }
+            ).then(
+                res => res.json()
+            ).then(
+                (data) => this.codigo = data.next_code
+            ).catch(console.log);
+            console.log("end beforeMount");
+            this.fetchData();
+        },
+        methods: {
+            fetchData() {
+                console.log("fetchData");
+                fetch(
+                    "http://localhost:8010/products"
+                    , {
+                        method: "GET",
+                        // mode: 'cors',
+                        // headers: {
+                        //     'Access-Control-Allow-Origin': '*',
+                        //     "Content-Type": "application/json",
+                        // }
+                    }
+                ).then(
+                    res => res.json()
+                ).then(
+                    (data) => this.products = data.items
+                ).catch(console.log);
+            },
+            submitForm() {
+                let _data = {
+                    "chapa": this.chapa,
+                    "name": this.name,
+                    "code": this.codigo,
+                    "telefono": this.telefono,
+                    "product_id": this.product_id
+                };
+                fetch(
+                    "http://localhost:8010/add_to_stack",
+                    {
+                        body: JSON.stringify(_data),
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            // 'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                    }).then(this.fetchData);
+            }
+        }
+    });
+
+
+</script>
+
+<!-- v-scope value can be omitted -->
+
+</html>
