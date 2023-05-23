@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  <title>Title</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+</head>
+<body style="position: absolute;top: 0;left: 0;right: 0;bottom: 0">
+<div id="app">
+  <v-app>
+    <v-app-bar app>
+      <v-tabs
+          v-model="active_tab"
+          centered
+          color="grey darken-1"
+      >
+        <v-tab
+            href="/admin/qr_list"
+        > QR list
+        </v-tab>
+        <v-tab
+            href="/admin/procesar_cola"
+        > Procesar Cola
+        </v-tab>
+      </v-tabs>
+      <v-btn v-if="current_user">
+        {{current_user.username}}
+      </v-btn>
+    </v-app-bar>
+    <v-main
+        class="d-flex flex-row"
+        style="height: 100%"
+    >
+      <v-container>
+        <v-row v-if="items.length>0">
+          <v-col cols="12" v-for="item in items">
+            <v-card>
+              <div class="d-flex flex-no-wrap justify-space-between">
+                <div>
+                  <v-card-title class="text-h5">
+                    {{item.created_at|dateFormat}}
+                  </v-card-title>
+                  <v-card-subtitle>
+                    <p>
+                      {{item.count}}
+                    </p>
+                  </v-card-subtitle>
+                  <v-card-actions>
+                    <!--                    <v-btn-->
+                    <!--                        v-if="item.artist === 'Ellie Goulding'"-->
+                    <!--                        class="ml-2 mt-3"-->
+                    <!--                        fab-->
+                    <!--                        icon-->
+                    <!--                        height="40px"-->
+                    <!--                        right-->
+                    <!--                        width="40px"-->
+                    <!--                    >-->
+                    <!--                      <v-icon>mdi-play</v-icon>-->
+                    <!--                    </v-btn>-->
+
+                    <!--                    <v-btn-->
+                    <!--                        class="ml-2 mt-5"-->
+                    <!--                        outlined-->
+                    <!--                        rounded-->
+                    <!--                        small-->
+                    <!--                    >-->
+                    <!--                      START RADIO-->
+                    <!--                    </v-btn>-->
+                  </v-card-actions>
+                </div>
+
+                <v-avatar
+                    class="ma-3"
+                    size="125"
+                    tile
+                >
+                  <v-img :src="item.src"></v-img>
+                </v-avatar>
+              </div>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-main>
+  </v-app>
+</div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+
+<script>
+
+
+    // region filters...
+
+    function dateFormat(date) {
+        return date ? moment(date).format('LL') : '-'
+    }
+
+
+    function monthFormat(date) {
+        return date ? moment(date).format('MMMM, YYYY') : '-'
+    }
+
+    function timeStamp(date) {
+        return date ? moment(date).format('LLL') : '-'
+    }
+
+    function hoursMinutes(date) {
+        return date ? moment(date).format('h:mm A') : '-'
+    }
+
+    function time(date) {
+        return date ? moment(date, 'H:mm:ss').format('LT') : '-'
+    }
+
+    function dateFromNow(date) {
+        return moment(date).fromNow()
+    }
+
+    function dateFromNowUtc(date) {
+        return moment.utc(date).fromNow()
+    }
+
+    // endregion
+    const StorageKey = {
+        USER: "user",
+        TOKEN: "token",
+        TOKEN_TYPE: "token_type",
+        TOKEN_EXPIRATION: "tokenExpiration",
+        RECENTLY_ACCOUNTS: "recentlyAccounts",
+    };
+
+    var app = new Vue({
+        el: '#app',
+        vuetify: new Vuetify(),
+        filters: {dateFormat},
+        data: () => ({
+            active_tab: "/admin/qr_list",
+            current_user: null,
+            items: [],
+            // items: [
+            //     {
+            //         color: '#1F7087',
+            //         src: 'https://cdn.vuetifyjs.com/images/cards/foster.jpg',
+            //         title: 'Supermodel',
+            //         artist: 'Foster the People',
+            //     },
+            //     {
+            //         color: '#952175',
+            //         src: 'https://cdn.vuetifyjs.com/images/cards/halcyon.png',
+            //         title: 'Halcyon Days',
+            //         artist: 'Ellie Goulding',
+            //     },
+            // ],
+        }),
+        beforeMount() {
+            this.fetchData();
+        },
+        methods: {
+            descargarImagen(url, nombreArchivo) {
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = nombreArchivo;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            },
+            load_auth_headers() {
+                const token = localStorage.getItem(StorageKey.TOKEN);
+                const tokenType = localStorage.getItem(StorageKey.TOKEN_TYPE);
+                if (!token || !tokenType) {
+                    this.clean_auth_headers()
+                    return {};
+                }
+                return {
+                    "Authorization": `${tokenType} ${token}`
+                }
+            },
+
+            set_auth_headers(tokenType, token) {
+                localStorage.setItem(StorageKey.TOKEN, token);
+                localStorage.setItem(StorageKey.TOKEN_TYPE, tokenType);
+            },
+            clean_auth_headers() {
+                localStorage.removeItem(StorageKey.TOKEN_EXPIRATION);
+                localStorage.removeItem(StorageKey.TOKEN);
+            },
+            load_data() {
+                fetch(
+                    "http://localhost:8010/admin/qr",
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            ...this.load_auth_headers()
+                        },
+                    }
+                ).then(
+                    (res) => res.json()
+                ).then(({items}) => {
+                    this.items = items.map(
+                        item => ({
+                            src: `http://localhost:8010/get_qr?code=${item.code}`,
+                            ...item
+                        })
+                    );
+                    return items;
+
+                }).catch(console.log)
+            }, fetchData() {
+                fetch(
+                    "http://localhost:8010/me",
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            ...this.load_auth_headers()
+                        },
+                    }
+                ).then(
+                    (res) => res.json()
+                ).then(
+                    data => {
+                        this.current_user = data
+                        this.load_data();
+                    }
+                ).catch(
+                    () => location.assign(`/login`)
+                )
+            },
+            submitForm() {
+                const formData = new FormData();
+                formData.append('username', this.username);
+                formData.append('password', this.password);
+
+                fetch(
+                    'http://localhost:8010/token', {
+                        body: formData,
+                        method: "POST",
+                        // headers: {
+                        //     "Content-Type": "multipart/form-data"
+                        // }
+                    }
+                ).then(res => res.json()).then(
+                    ({access_token, token_type, ...rest}) => {
+                        console.log(rest)
+                        this.set_auth_headers(token_type, access_token)
+                        ;
+                    }
+                ).catch(console.log);
+            }
+        }
+    });
+</script>
+
+<!-- v-scope value can be omitted -->
+
+</html>

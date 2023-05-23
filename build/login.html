@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  <title>Title</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+</head>
+<body style="position: absolute;top: 0;left: 0;right: 0;bottom: 0">
+<div id="app">
+  <v-app style="position: absolute;top: 0;left: 0;right: 0;bottom: 0">
+    <v-main class="d-flex flex-row overflow-auto" style="height: 100%">
+      <div class="fill-height d-flex flex-column justify-space-around align-center"
+      >
+        <v-form @submit.prevent="submitForm" style="max-width: 500px">
+          <v-card elevation="2" class="pa-6">
+            <v-container>
+              <v-row>
+                <v-col cols="12">
+                  <v-text-field label="username" v-model="username"></v-text-field>
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field label="password" v-model="password"></v-text-field>
+                </v-col>
+                <v-card-actions>
+                  <v-spacer></v-spacer>
+                  <v-btn type="submit">
+                    submit
+                  </v-btn>
+                </v-card-actions>
+              </v-row>
+            </v-container>
+          </v-card>
+        </v-form>
+      </div>
+    </v-main>
+  </v-app>
+</div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+
+<script>
+    const StorageKey = {
+        USER: "user",
+        TOKEN: "token",
+        TOKEN_TYPE: "token_type",
+        TOKEN_EXPIRATION: "tokenExpiration",
+        RECENTLY_ACCOUNTS: "recentlyAccounts",
+    };
+
+    var app = new Vue({
+        el: '#app',
+        vuetify: new Vuetify(),
+        data: () => ({
+            username: "",
+            password: "",
+        }),
+        methods: {
+            load_auth_headers() {
+                const token = localStorage.getItem(StorageKey.TOKEN);
+                const tokenType = localStorage.getItem(StorageKey.TOKEN_TYPE);
+                if (!token || !tokenType) {
+                    this.clean_auth_headers()
+                    return {};
+                }
+                return {
+                    "Authorization": `${tokenType} ${token}`
+                }
+            },
+
+            set_auth_headers(tokenType, token) {
+                localStorage.setItem(StorageKey.TOKEN, token);
+                localStorage.setItem(StorageKey.TOKEN_TYPE, tokenType);
+            },
+            clean_auth_headers() {
+                localStorage.removeItem(StorageKey.TOKEN_EXPIRATION);
+                localStorage.removeItem(StorageKey.TOKEN);
+            },
+            submitForm() {
+                const formData = new FormData();
+                formData.append('username', this.username);
+                formData.append('password', this.password);
+
+                fetch(
+                    'http://localhost:8010/token', {
+                        body: formData,
+                        method: "POST",
+                        // headers: {
+                        //     "Content-Type": "multipart/form-data"
+                        // }
+                    }
+                ).then(res => res.json()).then(
+                    ({access_token, token_type,...rest}) => {
+                        console.log(rest)
+                        this.set_auth_headers(token_type, access_token)
+                        fetch(
+                            "http://localhost:8010/me",
+                            {
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    ...this.load_auth_headers()
+                                },
+                            }).then(() => {
+                            location.assign(`/admin/qr_list`);
+                        });
+                    }
+                ).catch(console.log);
+            }
+        }
+    });
+</script>
+
+<!-- v-scope value can be omitted -->
+
+</html>

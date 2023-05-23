@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 
 import uvicorn
 import telegram
@@ -30,6 +31,9 @@ async def python_telegram_bot(mensage_dict):
 
 
 if __name__ == '__main__':
+    os.system(
+        "alembic upgrade head"
+    )
     uvicorn.run(
         "app:app",
         host='0.0.0.0',

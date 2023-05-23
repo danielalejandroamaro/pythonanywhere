@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  <title>Title</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+</head>
+<body style="position: absolute;top: 0;left: 0;right: 0;bottom: 0">
+<div id="app">
+  <v-app style="position: absolute;top: 0;left: 0;right: 0;bottom: 0">
+    <v-app-bar app>
+      <v-tabs
+          v-model="active_tab"
+          centered
+          color="grey darken-1"
+      >
+        <v-tab
+            href="/admin/qr_list"
+        > QR list
+        </v-tab>
+        <v-tab
+            href="/admin/procesar_cola"
+        > Procesar Cola
+        </v-tab>
+      </v-tabs>
+      <v-btn flat>
+        {{current_user.username}}
+      </v-btn>
+    </v-app-bar>
+    <v-main
+        class="d-flex flex-row overflow-auto"
+        style="height: 100%"
+    >
+      <div
+          class="fill-height d-flex flex-column justify-space-around align-center"
+      >
+        <pre>{{current_user}}</pre>
+      </div>
+    </v-main>
+  </v-app>
+</div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+
+<script>
+    const StorageKey = {
+        USER: "user",
+        TOKEN: "token",
+        TOKEN_TYPE: "token_type",
+        TOKEN_EXPIRATION: "tokenExpiration",
+        RECENTLY_ACCOUNTS: "recentlyAccounts",
+    };
+
+    var app = new Vue({
+        el: '#app',
+        vuetify: new Vuetify(),
+        data: () => ({
+            active_tab: "/admin/procesar_cola",
+            current_user: null
+        }),
+        beforeMount() {
+            this.fetchData();
+        },
+        methods: {
+            load_auth_headers() {
+                const token = localStorage.getItem(StorageKey.TOKEN);
+                const tokenType = localStorage.getItem(StorageKey.TOKEN_TYPE);
+                if (!token || !tokenType) {
+                    this.clean_auth_headers()
+                    return {};
+                }
+                return {
+                    "Authorization": `${tokenType} ${token}`
+                }
+            },
+
+            set_auth_headers(tokenType, token) {
+                localStorage.setItem(StorageKey.TOKEN, token);
+                localStorage.setItem(StorageKey.TOKEN_TYPE, tokenType);
+            },
+            clean_auth_headers() {
+                localStorage.removeItem(StorageKey.TOKEN_EXPIRATION);
+                localStorage.removeItem(StorageKey.TOKEN);
+            },
+            fetchData() {
+                fetch(
+                    "http://localhost:8010/me",
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            ...this.load_auth_headers()
+                        },
+                    }
+                ).then(
+                    (res) => res.json()
+                ).then(
+                    data => this.current_user = data
+                ).catch(
+                    () => location.assign(`/login`)
+                )
+            },
+            submitForm() {
+                const formData = new FormData();
+                formData.append('username', this.username);
+                formData.append('password', this.password);
+
+                fetch(
+                    'http://localhost:8010/token', {
+                        body: formData,
+                        method: "POST",
+                        // headers: {
+                        //     "Content-Type": "multipart/form-data"
+                        // }
+                    }
+                ).then(res => res.json()).then(
+                    ({access_token, token_type, ...rest}) => {
+                        console.log(rest)
+                        this.set_auth_headers(token_type, access_token)
+                        ;
+                    }
+                ).catch(console.log);
+            }
+        }
+    });
+</script>
+
+<!-- v-scope value can be omitted -->
+
+</html>

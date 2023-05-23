@@ -1,5 +1,6 @@
-from sqlalchemy import String, Column, Integer, DateTime, func, ForeignKey
+from sqlalchemy import String, Column, Integer, DateTime, func, ForeignKey, Boolean
 from sqlalchemy import text
+
 from engine import Base
 
 
@@ -36,6 +37,8 @@ class Queue(Base):
     product_id = Column(Integer, ForeignKey(Product.id), nullable=False)
 
     created_at = Column(DateTime(timezone=False), server_default=func.now(), nullable=False)
+
+    is_done = Column(Boolean, nullable=False, server_default=text('false'))
 
 
 class QR(Base):

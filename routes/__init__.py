@@ -1,6 +1,9 @@
+from io import BytesIO
 from typing import Optional
 
+import qrcode
 from fastapi import Request, APIRouter
+from fastapi.responses import FileResponse,StreamingResponse
 
 from database import orm_query, orm_update_create, rows2dict
 from models import Persone, Car, Product, Queue
@@ -143,7 +146,6 @@ async def root(request: Request):
             car_id=car.id,
             product_id=_product_id,
             index=_max + 1
-
         ),
         product_id
     )]
@@ -162,36 +164,51 @@ async def root(request: Request):
     return data
 
 
-@v1.post('/procesar_datos')
-def procesar_datos():
-    nombre = request.form['nombre']
-    ci = request.form['ci']
-    placa = request.form['placa']
-    telefono = request.form['telefono']
+# @v1.post('/procesar_datos')
+# def procesar_datos():
+#     nombre = request.form['nombre']
+#     ci = request.form['ci']
+#     placa = request.form['placa']
+#     telefono = request.form['telefono']
+#
+#     if len(nombre) > 40:
+#         return 'El nombre no puede tener más de 40 caracteres'
+#     if not ci.isdigit() or len(ci) not in {11, 6}:
+#         return 'El carnet de identidad debe tener 11 caracteres numéricos'
+#     if not placa.isalnum() or len(placa) != 7 or not placa[0].isalpha() or not placa[1:].isdigit():
+#         return 'La placa del carro debe tener una letra seguida de 6 dígitos'
+#     if not telefono.isdigit() or len(telefono) != 8:
+#         return 'El número de teléfono debe tener 8 caracteres numéricos'
+#
+#     qr_text = f"Nombre: {nombre}\nCI: {ci}\nPlaca: {placa}\nTeléfono: {telefono}"
+#
+#     # Generar el código QR
+#     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
+#     qr.add_data(qr_text)
+#     qr.make(fit=True)
+#
+#     # Crear un objeto de BytesIO para guardar la imagen del código QR
+#     img_buffer = BytesIO()
+#     img = qr.make_image(fill_color="black", back_color="white")
+#     img.save(img_buffer, format='png')
+#     img_buffer.seek(0)
+#
+#     # Enviar la imagen del código QR como respuesta
+#     return send_file(img_buffer, mimetype='image/png')
 
-    if len(nombre) > 40:
-        return 'El nombre no puede tener más de 40 caracteres'
-    if not ci.isdigit() or len(ci) not in {11, 6}:
-        return 'El carnet de identidad debe tener 11 caracteres numéricos'
-    if not placa.isalnum() or len(placa) != 7 or not placa[0].isalpha() or not placa[1:].isdigit():
-        return 'La placa del carro debe tener una letra seguida de 6 dígitos'
-    if not telefono.isdigit() or len(telefono) != 8:
-        return 'El número de teléfono debe tener 8 caracteres numéricos'
 
-    qr_text = f"Nombre: {nombre}\nCI: {ci}\nPlaca: {placa}\nTeléfono: {telefono}"
-
+@v1.get('/get_qr')
+def procesar_datos(code: str):
     # Generar el código QR
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
-    qr.add_data(qr_text)
+    qr.add_data(code)
     qr.make(fit=True)
 
     # Crear un objeto de BytesIO para guardar la imagen del código QR
     img_buffer = BytesIO()
     img = qr.make_image(fill_color="black", back_color="white")
-    img.save(img_buffer, format='png')
+    img.save(img_buffer, kind='png')
     img_buffer.seek(0)
 
     # Enviar la imagen del código QR como respuesta
-    return send_file(img_buffer, mimetype='image/png')
-
-
+    return StreamingResponse(img_buffer, media_type='image/png')
