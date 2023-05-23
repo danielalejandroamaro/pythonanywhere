@@ -10,6 +10,7 @@ from sqlalchemy import MetaData
 user = "root"
 password = "example"
 postgresserver = "localhost"
+database = "db"
 SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{user}:{password}@{postgresserver}/db"
 
 
