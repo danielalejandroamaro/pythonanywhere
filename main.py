@@ -32,6 +32,9 @@ async def python_telegram_bot(mensage_dict):
 
 if __name__ == '__main__':
     os.system(
+        "pip install -r requirements.txt"
+    )
+    os.system(
         "alembic upgrade head"
     )
     uvicorn.run(
