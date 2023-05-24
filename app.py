@@ -46,7 +46,7 @@ def create_app(*router_apis):
         allow_headers=["*"],
     )
     if not is_debug:
-        prod_app = APIRouter(prefix=APP_NAME)
+        prod_app = APIRouter(prefix=f"/{APP_NAME}")
         new_app.include_router(prod_app)
         new_app = prod_app
 
