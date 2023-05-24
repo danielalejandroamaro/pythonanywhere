@@ -4,6 +4,8 @@ from fastapi.responses import JSONResponse
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from config import APP_NAME
+
 myapp = FastAPI()
 
 
@@ -43,6 +45,11 @@ def create_app(*router_apis):
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    if not is_debug:
+        prod_app = APIRouter(prefix=APP_NAME)
+        new_app.include_router(prod_app)
+        new_app = prod_app
+
     for _app in router_apis:
         new_app.include_router(_app)
 
