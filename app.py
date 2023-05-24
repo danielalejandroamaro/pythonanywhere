@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import APP_NAME
+from config import APP_NAME, is_debug
 
 myapp = FastAPI()
 
