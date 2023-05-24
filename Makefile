@@ -8,7 +8,7 @@ migration-update:
 	alembic upgrade head
 
 migration-autogenerate:
-	alembic revision --autogenerate -m "database add qr product_id and is_done"
+	alembic revision --autogenerate -m "database init"
 
 migration-downgrade:
 	alembic downgrade -1

@@ -7,11 +7,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy import MetaData
 
-user = "root"
-password = "example"
-postgresserver = "localhost"
-database = "db"
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{user}:{password}@{postgresserver}/db"
+from config import DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
+
+SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 
 def _custom_json_serializer(*args, **kwargs) -> str:
