@@ -8,7 +8,7 @@ from sqlalchemy.sql.expression import (
     asc
 )
 
-from database import get_table
+from database import get_table, rows2dict
 from engine import set_connection
 from .const import (joinType, BuilderReservedParams as r_params)
 from .evaluation_expr import shunting_yard, evaluate_postfix, get_sql_operator, fix_ilike_operation
@@ -59,8 +59,12 @@ class Query:
 
         _table = table
         if len(scope_user) > 0:
-            table = (table_s := table.select()).where(
-                create_where_stmt(table_s, scope_user, operator='or')
+            table = select(
+                table,
+                create_where_stmt(
+                    table,
+                    scope_user,
+                    operator='or')
             )
 
         cols_to_return = table.c
@@ -84,14 +88,16 @@ class Query:
                 for k, v in filters.items() if k not in _exist_filters
             },
             **{
-                k: v for k, v in complex_filters.items() if k in table.c
+                k: v
+                for k, v in filters.items() if k in table.c
             }
         }
 
         if len(root_table_filter) > 0:
-            table = (table_s := table.select()).where(
+            table = select(
+                table,
                 create_where_stmt(
-                    table_s,
+                    table,
                     root_table_filter,
                     operator=_operator
                 )
@@ -156,7 +162,9 @@ class Query:
                                       if convert_to_valid_boolean(_exist)
                                       else k_subq.isnot(None)]
                         table = select(
-                            [*table.c, *new_cols], *_where
+                            *table.c,
+                            *new_cols,
+                            *_where
                         ).join_from(
                             table,
                             sub_q,
@@ -223,7 +231,7 @@ class Query:
                 k: cols_to_return[k] for k in values_list
             }
 
-        items = select([*cols_to_return.values()])
+        items = select(*cols_to_return.values())
 
         _like = self.params.get(r_params.LIKE)
         _like_cols = self.params.get(r_params.LIKE_COLS)
@@ -291,7 +299,7 @@ class Query:
     def run(self, conn=None):
         cols = self.__query.c
         r = conn.execute(self.__query)
-        result = [dict(i) for i in r]
+        result = rows2dict(r)
 
         if cols_name := self.params.get(r_params.NESTED):
             cols_name = list_to_dict(cols_name)
@@ -440,7 +448,8 @@ def get_op(operator_pofix):
     def decorator(fn):
         def _fn(table, col_with_filter, value):
             col_name = col_with_filter[:-len(operator_pofix)]
-            col = getattr(table.selected_columns, col_name)
+            attr = table.selected_columns if hasattr(table, "selected_columns") else table.c
+            col = getattr(attr, col_name)
             return fn(table, col, value)
 
         return {

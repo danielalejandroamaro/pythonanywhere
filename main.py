@@ -11,7 +11,9 @@ This chat
  ├ title: Acapulco prueba
  └ type: supergroup
  """
-bot = telegram.Bot(token='6227916110:AAHAmel-za-Jq_Ip9gslGZXTHKQ8SMqdyIo')
+bot = telegram.Bot(
+    token='6227916110:AAHAmel-za-Jq_Ip9gslGZXTHKQ8SMqdyIo'
+)
 
 
 def send_telegram_message(mesage_dict):
@@ -31,12 +33,6 @@ async def python_telegram_bot(mensage_dict):
 
 
 if __name__ == '__main__':
-    os.system(
-        "pip install -r requirements.txt"
-    )
-    os.system(
-        "alembic upgrade head"
-    )
     uvicorn.run(
         "app:app",
         host='0.0.0.0',

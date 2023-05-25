@@ -3,10 +3,10 @@ from typing import Optional
 
 import qrcode
 from fastapi import Request, APIRouter
-from fastapi.responses import FileResponse,StreamingResponse
+from fastapi.responses import StreamingResponse
 
 from database import orm_query, orm_update_create, rows2dict
-from models import Persone, Car, Product, Queue
+from models import Persone, Car, Product, Queue, QR
 from tools.sql_tools import Query
 from tools.types import first
 from tools import r_params
@@ -39,15 +39,28 @@ def products():
     }
 
 
+@v1.post("/products")
+def create_products():
+    return {
+        "items": rows2dict(
+            orm_query(
+                Product,
+                True
+            )
+        )
+    }
+
+
 @v1.get("/queue")
 def get_queue(
         index__lt: Optional[int] = None,
         index__gt: Optional[int] = None,
-        product_id: int = 0,
+        product_id: Optional[int] = None,
 ):
-    _filter = {
+    _filter = {} if product_id is None else {
         "product_id": product_id
     }
+
     if index__lt is not None:
         _filter.update(index__lt=index__lt)
     if index__gt is not None:
@@ -76,17 +89,69 @@ def root():
     return {"list": list}
 
 
-@v1.post("/add_to_stack")
+@v1.post("/queue")
 async def root(request: Request):
-    _list = _database.get("lista")
     obj = await request.json()
+    qr_code = obj.get("qr_code")
+
+    qr_obj = orm_query(
+        QR,
+        QR.code == qr_code,
+        get_first=True,
+        raise_on_not_found=True
+    )
+
+    anotated = orm_query(
+        Queue,
+        Queue.qr_id == qr_obj.id
+    )
+    assert len(anotated) < 250, "full qr code"
 
     name = obj.get(Persone.name.key, "")
     telefono = obj.get(Persone.telefono.key, "")
     product_id = obj.get(Queue.product_id.key, [])
+
     assert len(product_id) > 1, "tiene que tener al menos un producto seleccionado"
 
-    chapa = obj.get(Car.chapa.key, "")
+    chapa: str = obj.get(Car.chapa.key, "")
+    chapa = "".join(chapa.upper().split(' '))
+
+    q = Query(
+        Queue.__table__,
+        filters={
+            Queue.product_id.key: product_id
+        },
+        complex_filters={
+            Queue.car_id.key: {
+                Car.chapa.key: chapa
+            },
+            Queue.qr_id.key: {
+                QR.code.key: qr_code
+            }
+        }, params={
+            r_params.EXTEND: [
+                Queue.car_id.key,
+                Queue.qr_id.key
+            ],
+            r_params.GROUPBY: [
+                Queue.product_id.key
+            ]
+        }, agg_filters={
+            Queue.product_id.key: "count"  # func.count
+        }
+    ).run()
+    q = {
+        i[Queue.product_id.key]
+        for i in q
+    }
+
+    product_id = [
+        p_id
+        for p_id
+        in product_id
+        if p_id not in q
+    ]
+    assert len(product_id) > 0, "no puede inscribirce en esta lista otra vez"
 
     person = orm_query(
         Persone,
@@ -126,18 +191,24 @@ async def root(request: Request):
             now=True
         )
 
-    _max = 0
-    q = orm_query(
-        Queue,
-        Queue.cupet == "Acapulco"
-    )
-    if len(q) > 0:
-        _max = max(
-            *map(
-                lambda x: x.index
-                , q
-            )
-        )
+    queue_product_max = Query(
+        Queue.__table__,
+        filters={
+            Queue.qr_id.key: qr_obj.id
+        },
+        params={
+            r_params.GROUPBY: [Queue.product_id.key]
+        },
+        agg_filters={
+            Queue.index.key: "max"  # func.max
+        }
+    ).run()
+
+    queue_product_max = {
+        qp_max[Queue.product_id.key]: qp_max[f'{Queue.index.key}__max']
+        for qp_max in queue_product_max
+    }
+
     queues = [*map(
         lambda _product_id:
         Queue(
@@ -145,7 +216,8 @@ async def root(request: Request):
             persone_id=_person.id,
             car_id=car.id,
             product_id=_product_id,
-            index=_max + 1
+            qr_id=qr_obj.id,
+            index=queue_product_max.get(_product_id, 0) + 1
         ),
         product_id
     )]

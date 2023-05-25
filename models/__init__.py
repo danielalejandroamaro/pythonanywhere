@@ -25,6 +25,13 @@ class Product(Base):
     name = Column(String(255), nullable=True)
 
 
+class QR(Base):
+    __tablename__ = "qr_table"
+    id = Column(Integer, primary_key=True)
+    code = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=False), server_default=func.now(), nullable=False)
+
+
 class Queue(Base):
     __tablename__ = "queue"
     id = Column(Integer, primary_key=True)
@@ -34,16 +41,9 @@ class Queue(Base):
 
     persone_id = Column(Integer, ForeignKey(Persone.id), nullable=False)
     car_id = Column(Integer, ForeignKey(Car.id), nullable=False)
-    product_id = Column(Integer, ForeignKey(Product.id), nullable=False)
+    qr_id = Column(Integer, ForeignKey(QR.id), nullable=False)
 
     created_at = Column(DateTime(timezone=False), server_default=func.now(), nullable=False)
 
     is_done = Column(Boolean, nullable=False, server_default=text('false'))
-
-
-class QR(Base):
-    __tablename__ = "qr_table"
-    id = Column(Integer, primary_key=True)
-    code = Column(String(255), nullable=False)
-    created_at = Column(DateTime(timezone=False), server_default=func.now(), nullable=False)
-    count = Column(Integer, nullable=False, server_default=text("0"))
+    product_id = Column(Integer, ForeignKey(Product.id), nullable=False)
