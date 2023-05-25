@@ -1,3 +1,4 @@
+from sqlalchemy import inspect, CursorResult
 from sqlalchemy.orm import Session
 
 from engine import set_session, engine, metadata_obj
@@ -11,7 +12,8 @@ class NotFoundError(Exception):
 
 
 def get_table(table_name):
-    if table_name in engine.table_names():
+    insp = inspect(engine)
+    if table_name in [*insp.get_table_names(), *insp.get_view_names()]:
         return Table(
             table_name,
             metadata_obj,
@@ -87,6 +89,8 @@ def row2dict(row, key=None):
 
 
 def rows2dict(rows, key=None):
+    if isinstance(rows, CursorResult):
+        key = [*rows.keys()] if key is None else key
     return [row2dict(row, key) for row in rows]
 
 

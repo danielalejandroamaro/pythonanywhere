@@ -8,7 +8,7 @@ migration-update:
 	alembic upgrade head
 
 migration-autogenerate:
-	alembic revision --autogenerate -m "database init"
+	alembic revision --autogenerate -m "database udapte"
 
 migration-downgrade:
 	alembic downgrade -1

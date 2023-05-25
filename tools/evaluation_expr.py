@@ -109,7 +109,8 @@ def evaluate_postfix(postfix, table, filters, map_operators, operator):
 
 
 def get_sql_operator(params, map_operators, col_name, table, operator):
-    col = getattr(table.selected_columns, col_name, None)
+    attr = table.selected_columns if hasattr(table,"selected_columns") else table.c
+    col = getattr(attr, col_name, None)
 
     if col is None:
 

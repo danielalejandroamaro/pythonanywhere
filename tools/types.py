@@ -2,6 +2,8 @@ import re
 from enum import Enum
 from functools import reduce
 from typing import Dict, List
+import random
+import string
 
 import six
 from numpy import int8, int16, int32, int64
@@ -350,3 +352,12 @@ def fix_pattern(_like):
     if _like.startswith("^"):
         pattern = pattern[2:]
     return pattern
+
+
+def generar_cadena_aleatoria(length=None):
+    length = length or 32
+    caracteres = string.ascii_letters + string.digits
+    cadena = ''.join(random.choice(caracteres) for _ in range(length))
+    return cadena
+
+
