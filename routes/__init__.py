@@ -83,6 +83,34 @@ def get_queue(
     }
 
 
+@v1.get("/find")
+def find(chapa: str):
+    chapa = "".join(chapa.upper().split(' '))
+
+    q = Query(
+        Queue.__table__,
+        complex_filters={
+            Queue.car_id.key: {
+                Car.chapa.key: chapa
+            }
+        },
+        params={
+            r_params.ORDERBY: [
+                f'-{Queue.created_at.key}'
+            ],
+            r_params.EXTEND: [
+                f'{Queue.persone_id.key}.{Persone.name.key}',
+                f'{Queue.car_id.key}.{Car.chapa.key}',
+                f'{Queue.product_id.key}.{Product.name.key}'
+            ]
+        }
+    ).run()
+
+    return {
+        "items": q
+    }
+
+
 @v1.get("/products")
 def root():
     list = _database.get("lista")
