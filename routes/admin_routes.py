@@ -99,19 +99,29 @@ async def create_queue_process(
     }
 
 
+from typing import Optional
+
+
 @admin_routes.get("/queue_process")
-async def get_queue_process():
+async def get_queue_process(
+        queue_process_id: Optional[int] = None
+):
+    _fitler = {} if queue_process_id is None else {
+        "id": queue_process_id
+    }
     r = Query(
         QueueProcess.__table__,
+        filters=_fitler,
         params={
             r_params.EXTEND: [
                 f'{QueueProcess.product_id.key}.{Product.name.key}'
             ]
         }
     ).run()
+
     return {
         "items": r
-    }
+    } if queue_process_id is None else r[0]
 
 
 @admin_routes.delete("/queue_process")
