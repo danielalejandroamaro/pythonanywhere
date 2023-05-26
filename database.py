@@ -1,4 +1,4 @@
-from sqlalchemy import inspect, CursorResult
+from sqlalchemy import inspect, CursorResult, delete, ChunkedIteratorResult
 from sqlalchemy.orm import Session
 
 from engine import set_session, engine, metadata_obj
@@ -76,7 +76,9 @@ def orm_delete(table, *filters, session: Session = None):
         .returning(table)
         .execution_options(synchronize_session=False)
     )
-    return [*session.execute(stmt)]
+    return rows2dict(
+        session.execute(stmt)
+    )
 
 
 def row2dict(row, key=None):
@@ -89,8 +91,12 @@ def row2dict(row, key=None):
 
 
 def rows2dict(rows, key=None):
+    if isinstance(rows, ChunkedIteratorResult):
+        rows = rows.raw
+
     if isinstance(rows, CursorResult):
         key = [*rows.keys()] if key is None else key
+
     return [row2dict(row, key) for row in rows]
 
 

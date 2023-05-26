@@ -31,9 +31,6 @@ def pprint(items):
     return items.compile(dialect=mysql.dialect(), compile_kwargs={"literal_binds": True})
 
 
-TABLE_HIT = {}
-
-
 class Query:
     __query: selectable
 
