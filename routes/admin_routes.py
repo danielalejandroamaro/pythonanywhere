@@ -2,14 +2,16 @@ from fastapi import APIRouter, Depends, Request
 
 from database import rows2dict, orm_query, row2dict, orm_update_create, orm_delete
 from security.access import get_current_user
+from tools.sql_tools import Query
 from tools.types import generar_cadena_aleatoria
+from tools import r_params
 
 admin_routes = APIRouter(
     prefix="/admin",
     dependencies=[Depends(get_current_user)]
 )
 
-from models import QR, Product
+from models import QR, Product, QueueProcess
 
 
 @admin_routes.get('/qr')
@@ -74,5 +76,49 @@ def delete_products(product_id: int):
         "items": orm_delete(
             Product,
             Product.id == product_id
+        )
+    }
+
+
+@admin_routes.post("/queue_process")
+async def create_queue_process(
+        request: Request
+):
+    obj = await request.json()
+
+    q = QueueProcess(
+        **obj
+    )
+    orm_update_create(
+        q,
+        now=True
+    )
+
+    return {
+        "items": [row2dict(q)]
+    }
+
+
+@admin_routes.get("/queue_process")
+async def get_queue_process():
+    r = Query(
+        QueueProcess.__table__,
+        params={
+            r_params.EXTEND: [
+                f'{QueueProcess.product_id.key}.{Product.name.key}'
+            ]
+        }
+    ).run()
+    return {
+        "items": r
+    }
+
+
+@admin_routes.delete("/queue_process")
+def delete_queue_process(queue_process_id: int):
+    return {
+        "items": orm_delete(
+            QueueProcess,
+            QueueProcess.id == queue_process_id
         )
     }
