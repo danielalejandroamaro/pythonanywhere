@@ -20,11 +20,16 @@ def get_password_hash(plain_password):
 
 
 def authenticate_user(username: str, plain_password: str):
-    _user: User = first(orm_query(User, User.username == username), raise_on_empty=False)
+    _user: User = first(
+        orm_query(
+            User,
+            User.username == username
+        ), raise_on_empty=False
+    )
     if not _user:
-        return False
+        return None
     if not verify_password(plain_password, _user.password.pasword_hash):
-        return False
+        return None
     return _user
 
 

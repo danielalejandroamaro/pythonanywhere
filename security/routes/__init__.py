@@ -98,7 +98,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     if len(q) == 0:
         password = form_data.password
 
-        new_user = User(
+        user = User(
             username=form_data.username,
             is_superuser=True
         )
@@ -106,17 +106,18 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         if password:
             password = UserPassword(
                 pasword_hash=get_password_hash(password),
-                user=new_user
+                user=user
             )
-        orm_update_create(new_user, password, now=True)
-        user = new_user
+        orm_update_create(user, password, now=True)
     else:
         user = authenticate_user(form_data.username, form_data.password)
 
-    if not user:
+    if user is None:
         raise credentials_exception
     access_token = create_access_token(
-        data={"sub": user.username}
+        data={
+            "sub": user.username
+        }
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
