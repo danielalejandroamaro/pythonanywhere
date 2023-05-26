@@ -47,3 +47,15 @@ class Queue(Base):
 
     is_done = Column(Boolean, nullable=False, server_default=text('false'))
     product_id = Column(Integer, ForeignKey(Product.id), nullable=False)
+
+
+class QueueProcess(Base):
+    __tablename__ = "queue_process"
+    id = Column(Integer, primary_key=True)
+
+    created_at = Column(DateTime(timezone=False), server_default=func.now(), nullable=False)
+
+    product_id = Column(Integer, ForeignKey(Product.id), nullable=False)
+
+    max_index = Column(Integer, nullable=False)
+    min_index = Column(Integer, nullable=False)

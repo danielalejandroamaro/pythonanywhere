@@ -8,7 +8,7 @@ migration-update:
 	alembic upgrade head
 
 migration-autogenerate:
-	alembic revision --autogenerate -m "database udapte"
+	alembic revision --autogenerate -m "database add ProcessQueue"
 
 migration-downgrade:
 	alembic downgrade -1
