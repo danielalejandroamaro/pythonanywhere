@@ -93,8 +93,7 @@ class Token(BaseModel):
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     q = orm_query(
         User,
-        True,
-        now=True
+        True
     )
     if len(q) == 0:
         password = form_data.password
@@ -110,8 +109,10 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
                 user=new_user
             )
         orm_update_create(new_user, password, now=True)
+        user = new_user
+    else:
+        user = authenticate_user(form_data.username, form_data.password)
 
-    user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise credentials_exception
     access_token = create_access_token(
