@@ -5,7 +5,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from starlette.authentication import SimpleUser
 
-from database import orm_update_create, row2dict, orm_query
+from database import row2dict, orm_query, orm_update_create
+from .. import UserPassword
 from ..access import get_current_user
 from ..api_version import v1
 from ..dependencies import UserApiQueryParams
@@ -14,7 +15,7 @@ from ..exceptions import (
     unauthorized_exception,
     missing_arguments_required
 )
-from ..models import User, UserPassword
+from ..models import User
 from ..tools import authenticate_user, create_access_token, get_password_hash
 from ..users_methods import update_user
 
@@ -26,28 +27,28 @@ class UserModel(BaseModel):
     phone_number: Optional[str]
 
 
-@v1.post("/signup")
-async def singup(
-        user: UserModel = Depends()
-):
-    print(user)
-    new_user_obj = {
-        "username": user.username,
-        "email": user.email,
-        "phone_number": user.phone_number,
-    }
-    password = user.password
-
-    new_user = User(
-        **new_user_obj
-    )
-    if password:
-        password = UserPassword(
-            pasword_hash=get_password_hash(password),
-            user=new_user
-        )
-    orm_update_create(new_user, password, now=True)
-    return row2dict(new_user)
+# @v1.post("/signup")
+# async def singup(
+#         user: UserModel = Depends()
+# ):
+#     print(user)
+#     new_user_obj = {
+#         "username": user.username,
+#         "email": user.email,
+#         "phone_number": user.phone_number,
+#     }
+#     password = user.password
+#
+#     new_user = User(
+#         **new_user_obj
+#     )
+#     if password:
+#         password = UserPassword(
+#             pasword_hash=get_password_hash(password),
+#             user=new_user
+#         )
+#     orm_update_create(new_user, password, now=True)
+#     return row2dict(new_user)
 
 
 async def put_user(
@@ -90,6 +91,26 @@ class Token(BaseModel):
 
 @v1.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    q = orm_query(
+        User,
+        True,
+        now=True
+    )
+    if len(q) == 0:
+        password = form_data.password
+
+        new_user = User(
+            username=form_data.username,
+            is_superuser=True
+        )
+
+        if password:
+            password = UserPassword(
+                pasword_hash=get_password_hash(password),
+                user=new_user
+            )
+        orm_update_create(new_user, password, now=True)
+
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise credentials_exception
