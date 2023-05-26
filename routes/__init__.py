@@ -39,16 +39,6 @@ def products():
     }
 
 
-@v1.post("/products")
-def create_products():
-    return {
-        "items": rows2dict(
-            orm_query(
-                Product,
-                True
-            )
-        )
-    }
 
 
 @v1.get("/queue")

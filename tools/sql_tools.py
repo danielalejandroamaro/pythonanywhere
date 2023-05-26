@@ -31,9 +31,6 @@ def pprint(items):
     return items.compile(dialect=mysql.dialect(), compile_kwargs={"literal_binds": True})
 
 
-TABLE_HIT = {}
-
-
 class Query:
     __query: selectable
 
@@ -60,11 +57,13 @@ class Query:
         _table = table
         if len(scope_user) > 0:
             table = select(
-                table,
+                table
+            ).where(
                 create_where_stmt(
                     table,
                     scope_user,
                     operator='or')
+
             )
 
         cols_to_return = table.c
@@ -96,6 +95,7 @@ class Query:
         if len(root_table_filter) > 0:
             table = select(
                 table,
+            ).where(
                 create_where_stmt(
                     table,
                     root_table_filter,
@@ -151,26 +151,34 @@ class Query:
                             for col in cols
                         ]
                         k_subq = first(
-                            col for col in sub_q.c if rigth_col.key == col.key
+                            col
+                            for col in sub_q.c
+                            if rigth_col.key == col.key
                         )
                         onclause = first(
                             col for col in table.c if left_col.key == col.key
                         ) == k_subq
                         _where = []
-                        if _exist := _exist_filters.get(f'{table_name}__isnull', None):
-                            _where = [k_subq.is_(None)
-                                      if convert_to_valid_boolean(_exist)
-                                      else k_subq.isnot(None)]
+                        if _exist := _exist_filters.get(
+                                f'{table_name}__isnull',
+                                None
+                        ):
+                            _where = [
+                                k_subq.is_(None)
+                                if convert_to_valid_boolean(_exist)
+                                else k_subq.isnot(None)
+                            ]
                         table = select(
                             *table.c,
-                            *new_cols,
-                            *_where
+                            *new_cols
                         ).join_from(
                             table,
                             sub_q,
-                            onclause=onclause,
                             isouter=_isouter,
+                            onclause=onclause,
                             full=_full
+                        ).where(
+                            *_where
                         )
 
                     cols_to_return = table.c
@@ -209,7 +217,7 @@ class Query:
                     # esto es importante porque el join se hace sobre table no sobre la tabla original
 
                     table = select(
-                        [*table.c, *new_cols]
+                        *table.c, *new_cols
                     ).join_from(
                         table,
                         sub_q,
