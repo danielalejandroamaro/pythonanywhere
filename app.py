@@ -19,12 +19,12 @@ def validation_exception_handler(request: Request, exc: HTTPException):
 
 
 def create_app(*router_apis):
-    new_app = FastAPI()
+    my_app = FastAPI()
 
     from starlette.middleware.authentication import AuthenticationMiddleware
     from security.access import BearerAuthBackend
 
-    new_app.add_middleware(
+    my_app.add_middleware(
         AuthenticationMiddleware,
         backend=BearerAuthBackend(),
         on_error=validation_exception_handler
@@ -38,22 +38,24 @@ def create_app(*router_apis):
         "http://127.0.0.1:8080",
     ]
 
-    new_app.add_middleware(
+    my_app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    if not is_debug:
-        prod_app = APIRouter(prefix=f"/{APP_NAME}")
-        new_app.include_router(prod_app)
-        new_app = prod_app
-
+    prod_app = APIRouter(prefix=f"/{APP_NAME}")
     for _app in router_apis:
-        new_app.include_router(_app)
+        prod_app.include_router(_app)
 
-    return new_app
+    if not is_debug:
+        my_app.include_router(prod_app)
+    else:
+        for _app in router_apis:
+            my_app.include_router(_app)
+
+    return my_app
 
 
 from routes import v1 as basic_routes
