@@ -3,14 +3,15 @@ from decouple import config
 
 def get_not_null_config(key, default=None, cast=None):
     kwargs = {} if cast is None else {"cast": cast}
-    value = config(key, default, **kwargs)
+    args = [] if default is None else [default]
+    value = config(key, *args, **kwargs)
     if value is None:
         raise Exception(f'Missing {key} on .env')
     return value
 
 
 def get_not_empty_config(key, default=None, cast=None):
-    value = get_not_null_config(key, cast=cast, default=default)
+    value = get_not_null_config(key, default=default, cast=cast)
     if value == "":
         raise Exception(f'{key} not allow empty value in .env')
     return value
