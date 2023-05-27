@@ -15,8 +15,12 @@ from config import (
     DB_NAME
 )
 
-SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-print(f'QLALCHEMY_DATABASE_URL:\n{QLALCHEMY_DATABASE_URL}\n')
+
+def get_sqlalchemy_database_url():
+    QLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    print(f'QLALCHEMY_DATABASE_URL:\n{QLALCHEMY_DATABASE_URL}\n')
+
+    return QLALCHEMY_DATABASE_URL
 
 
 def _custom_json_serializer(*args, **kwargs) -> str:
@@ -39,7 +43,7 @@ def _create_engine(url, **kwargs):
     )
 
 
-engine = _create_engine(SQLALCHEMY_DATABASE_URL)
+engine = _create_engine(get_sqlalchemy_database_url())
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

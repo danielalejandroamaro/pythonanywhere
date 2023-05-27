@@ -5,7 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from engine import SQLALCHEMY_DATABASE_URL
+from engine import get_sqlalchemy_database_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -13,7 +13,7 @@ config = context.config
 # ---------------- added code here -------------------------#
 # this will overwrite the ini-file sqlalchemy.url path
 # with the path given in the config of the main code
-config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+config.set_main_option("sqlalchemy.url", get_sqlalchemy_database_url())
 # ------------------------------------------------------------#
 
 # Interpret the config file for Python logging.
