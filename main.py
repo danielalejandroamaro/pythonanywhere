@@ -1,9 +1,10 @@
 import asyncio
 import json
-import os
 
 import uvicorn
 import telegram
+
+from config import TELEGRAM_CHATID, TELEGRAM_TOKEN
 
 """
 This chat
@@ -12,7 +13,7 @@ This chat
  └ type: supergroup
  """
 bot = telegram.Bot(
-    token='6227916110:AAHAmel-za-Jq_Ip9gslGZXTHKQ8SMqdyIo'
+    token=TELEGRAM_TOKEN
 )
 
 
@@ -23,12 +24,19 @@ def send_telegram_message(mesage_dict):
 
 async def python_telegram_bot(mensage_dict):
     pretty_json = json.dumps(mensage_dict, indent=2)
-    _id = -1001862099073
     await bot.send_message(
-        chat_id=_id,
+        chat_id=TELEGRAM_CHATID,
         # , reply_markup=keyboard
         text=f'```\n{pretty_json}\n```',
         parse_mode='Markdown'
+    )
+
+
+async def python_telegram_file_bot(document, filename):
+    await bot.send_document(
+        chat_id=TELEGRAM_CHATID,
+        document=document,
+        filename=filename,
     )
 
 

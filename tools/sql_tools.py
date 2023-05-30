@@ -8,8 +8,8 @@ from sqlalchemy.sql.expression import (
     asc
 )
 
-from database import get_table, rows2dict
-from engine import set_connection
+from database import get_table, rows2dict, table_names
+from engine import set_session
 from .const import (joinType, BuilderReservedParams as r_params)
 from .evaluation_expr import shunting_yard, evaluate_postfix, get_sql_operator, fix_ilike_operation
 from .types import (
@@ -36,18 +36,26 @@ class Query:
 
     def __init__(
             self,
-            table,
+            table: str,
             filters=None,
             complex_filters=None,
             params=None,
             agg_filters=None,
             scope_user=None,
     ):
+        self.table = get_table(table)
+        assert self.table is not None, "missing table"
+
+        table = self.table
         filters = filters or {}
+        self.filters = filters
         scope_user = scope_user or {}
         agg_filters = agg_filters or {}
+        self.agg_filters = agg_filters
+
         self.params = params or {}
         complex_filters = complex_filters or {}
+        self.complex_filters = complex_filters
 
         _operator = self.params.get(
             r_params.DEFAULT_SQL_OPERATORS,
@@ -131,7 +139,7 @@ class Query:
                                 create_where_stmt(rigth_table, _filter, operator=_operator)
                             )
                             _isouter = False
-                        if _filter := complex_filters.get(left_col.key):
+                        elif _filter := complex_filters.get(left_col.key):
                             rigth_table = rigth_table.where(
                                 create_where_stmt(rigth_table, _filter, operator=_operator)
                             )
@@ -183,7 +191,7 @@ class Query:
 
                     cols_to_return = table.c
 
-            if cols_name:
+            if cols_name:  # nested
                 cols = {
                     col_name: getattr(_table.c, col_name)
                     for col_name in cols_name
@@ -221,7 +229,7 @@ class Query:
                     ).join_from(
                         table,
                         sub_q,
-                        onclause,
+                        onclause=onclause,
                         isouter=_isouter,
                         full=_full
                     )
@@ -303,10 +311,10 @@ class Query:
 
         self.__query = items
 
-    @set_connection
-    def run(self, conn=None):
+    @set_session
+    def run(self, session=None):
         cols = self.__query.c
-        r = conn.execute(self.__query)
+        r = session.execute(self.__query)
         result = rows2dict(r)
 
         if cols_name := self.params.get(r_params.NESTED):
@@ -325,7 +333,7 @@ class Query:
                         # TODO: hacer usando la tabla secure_table
                         pass
                     result = new_result
-                elif col_name in Engine.get_engine().table_names():
+                elif col_name in table_names():
                     sub_table = get_table(col_name)
                     col_in_sub_table = first(
                         filter(
@@ -357,16 +365,15 @@ class Query:
                         params = {
                             r_params.VALUES_LIST: values_list
                         }
-                    sub_stmt = create_select_query(
-                        sub_table,
+                    _result = Query(
+                        sub_table.key,
                         filters={
                             col_name_in_sub_table: ids_to_find,
-                            **self.__complex_filters.get(col_name, {})
+                            **self.complex_filters.get(col_name, {})
                         },
                         params=params
-                    )
+                    ).run()
 
-                    _result = [*conn.execute(sub_stmt)]
                     all_sub_results = {}
                     for row in _result:
                         _key = row[col_name_in_sub_table]

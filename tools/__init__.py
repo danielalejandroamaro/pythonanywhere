@@ -7,6 +7,7 @@ from .types import (
     _flat
 )
 
+
 @_flat
 def get_query_params(key, _qparams, fn_map=None, skip_value=None, defalut=None, prefer=None):
     if prefer is None:

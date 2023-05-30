@@ -2,13 +2,12 @@ from io import BytesIO
 from typing import Optional
 
 import qrcode
-from fastapi import Request, APIRouter
+from fastapi import Request, APIRouter, status, HTTPException
 from fastapi.responses import StreamingResponse
 
 from database import orm_query, orm_update_create, rows2dict
 from models import Persone, Car, Product, Queue, QR
 from tools.sql_tools import Query
-from tools.types import first
 from tools import r_params
 
 v1 = APIRouter()
@@ -39,26 +38,36 @@ def products():
     }
 
 
-
-
 @v1.get("/queue")
 def get_queue(
         index__lt: Optional[int] = None,
         index__gt: Optional[int] = None,
         product_id: Optional[int] = None,
+        chapa: Optional[str] = None
 ):
-    _filter = {} if product_id is None else {
-        "product_id": product_id
+    _filter = {
+        Queue.is_done.key: False
     }
-
+    _complex_fitler = {}
+    if product_id is not None:
+        _filter.update(product_id=product_id)
     if index__lt is not None:
         _filter.update(index__lt=index__lt)
     if index__gt is not None:
         _filter.update(index__gt=index__gt)
+    if chapa is not None:
+        _complex_fitler.update(
+            **{
+                Queue.car_id.key: {
+                    Car.chapa.key: chapa
+                }
+            }
+        )
 
     items = Query(
-        Queue.__table__,
+        Queue.__tablename__,
         filters=_filter,
+        complex_filters=_complex_fitler,
         params={
             r_params.EXTEND: [
                 f'{Queue.product_id.key}.{Product.name.key}',
@@ -74,11 +83,13 @@ def get_queue(
 
 
 @v1.get("/find")
-def find(chapa: str):
+def find(
+        chapa: str
+):
     chapa = "".join(chapa.upper().split(' '))
 
     q = Query(
-        Queue.__table__,
+        Queue.__tablename__,
         complex_filters={
             Queue.car_id.key: {
                 Car.chapa.key: chapa
@@ -107,6 +118,16 @@ def root():
     return {"list": list}
 
 
+class ValidationException(Exception):
+
+    def __init__(self, function):
+        self.function = function
+
+    @staticmethod
+    def validate(self, *args, **kwargs):
+        return self.function(*args, **kwargs)
+
+
 @v1.post("/queue")
 async def root(request: Request):
     obj = await request.json()
@@ -123,19 +144,39 @@ async def root(request: Request):
         Queue,
         Queue.qr_id == qr_obj.id
     )
-    assert len(anotated) < 250, "full qr code"
+    if not (len(anotated) < 250):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "push_notification": "Esta cola esta llena, espere un nuevo QR"
+            }
+        )
 
-    name = obj.get(Persone.name.key, "")
-    telefono = obj.get(Persone.telefono.key, "")
-    product_id = obj.get(Queue.product_id.key, [])
+    name = obj.get(Persone.name.key, "") or ""
+    telefono = obj.get(Persone.telefono.key, "") or ""
+    product_id = obj.get(Queue.product_id.key, []) or []
 
-    assert len(product_id) > 1, "tiene que tener al menos un producto seleccionado"
+    if not (len(product_id) > 0):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "push_notification": "Tiene que tener al menos un producto seleccionado"
+            }
+        )
 
     chapa: str = obj.get(Car.chapa.key, "")
     chapa = "".join(chapa.upper().split(' '))
 
+    if not chapa.isalnum() or len(chapa) != 7 or not chapa[0].isalpha() or not chapa[1:].isdigit():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "push_notification": 'La chapa del carro debe tener una letra seguida de 6 dígitos'
+            }
+        )
+
     q = Query(
-        Queue.__table__,
+        Queue.__tablename__,
         filters={
             Queue.product_id.key: product_id
         },
@@ -169,22 +210,22 @@ async def root(request: Request):
         in product_id
         if p_id not in q
     ]
-    assert len(product_id) > 0, "no puede inscribirce en esta lista otra vez"
 
-    person = orm_query(
-        Persone,
-        Persone.telefono == telefono
-    )
-    _person: Persone = None
-
-    if len(person) > 0:
-        _person = first(
-            filter(
-                lambda x: x.name == name,
-                person
-            ),
-            raise_on_empty=False
+    if not (len(product_id) > 0):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "push_notification": "Chapa ya registrada. No puede inscribirse en esta lista otra vez",
+            }
         )
+
+    _person: Persone = orm_query(
+        Persone,
+        Persone.telefono == telefono,
+        Persone.name == name,
+        get_first=True
+    )
+
     if _person is None:
         _person = Persone(
             name=name,
@@ -201,16 +242,14 @@ async def root(request: Request):
         get_first=True
     )
     if car is None:
-        car = Car(
-            chapa=chapa
-        )
+        car = Car(chapa=chapa)
         orm_update_create(
             car,
             now=True
         )
 
     queue_product_max = Query(
-        Queue.__table__,
+        Queue.__tablename__,
         filters={
             Queue.qr_id.key: qr_obj.id
         },
@@ -246,11 +285,23 @@ async def root(request: Request):
     )
 
     data = {
-        "index": queues[0].index,
-        "chapa": car.chapa
+        "items": Query(
+            Queue.__tablename__,
+            complex_filters={
+                Queue.car_id.key: {
+                    Car.chapa.key: chapa
+                }
+            },
+            params={
+                r_params.EXTEND: [
+                    f'{Queue.car_id.key}.{Car.chapa.key}',
+                    f'{Queue.persone_id.key}.{Persone.name.key}',
+                    f'{Queue.product_id.key}.{Product.name.key}'
+                ],
+            }
+        ).run()
     }
 
-    # await python_telegram_bot(data)
     return data
 
 

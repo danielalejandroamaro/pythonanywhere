@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, Request
 
-from database import rows2dict, orm_query, row2dict, orm_update_create, orm_delete
+from database import orm_query, row2dict, orm_update_create, orm_delete
 from security.access import get_current_user
+from tools.fatapi_tools import export_xlsx, send_telegram_xlsx
 from tools.sql_tools import Query
 from tools.types import generar_cadena_aleatoria
 from tools import r_params
@@ -11,18 +12,18 @@ admin_routes = APIRouter(
     dependencies=[Depends(get_current_user)]
 )
 
-from models import QR, Product, QueueProcess
+from models import QR, Product, QueueProcess, Queue, Car, Persone
 
 
 @admin_routes.get('/qr')
 def get_qr():
     return {
-        "items": rows2dict(
-            orm_query(
-                QR,
-                True
-            )
-        )
+        "items": Query(
+            QR.__tablename__,
+            params={
+                r_params.NESTED: [Queue.__tablename__]
+            }
+        ).run()
     }
 
 
@@ -110,7 +111,7 @@ async def get_queue_process(
         "id": queue_process_id
     }
     r = Query(
-        QueueProcess.__table__,
+        QueueProcess.__tablename__,
         filters=_fitler,
         params={
             r_params.EXTEND: [
@@ -122,6 +123,71 @@ async def get_queue_process(
     return {
         "items": r
     } if queue_process_id is None else r[0]
+
+
+import pandas as pd
+
+
+@admin_routes.get("/download_queue")
+async def download_queue(
+        qr_id: Optional[int] = None
+):
+    assert qr_id is not None, "debes pasar el qr_id"
+
+    r = Query(
+        Queue.__tablename__,
+        filters={
+            Queue.qr_id.key: qr_id
+        },
+        params={
+            r_params.EXTEND: [
+                f'{Queue.product_id.key}.{Product.name.key}',
+                f'{Queue.car_id.key}.{Car.chapa.key}',
+                f'{Queue.persone_id.key}.{Persone.name.key}',
+            ]
+        }
+    ).run()
+    matrix = pd.DataFrame(
+        r
+    )
+    matrix.drop(
+        columns=[
+            Queue.product_id.key,
+            Queue.id.key,
+            Queue.car_id.key,
+            Queue.persone_id.key,
+            Queue.qr_id.key,
+        ],
+        inplace=True
+    )
+
+    matrix[
+        Queue.is_done.key
+    ] = [
+        "si" if v else "no"
+        for v in
+        matrix[Queue.is_done.key].values
+    ]
+
+    matrix.rename(
+        {
+            f'{Queue.is_done.key}': 'ya cogió',
+            f'{Queue.created_at.key}': 'entro en la cola',
+            f'{Queue.product_id.key}.{Product.name.key}': 'producto',
+            f'{Queue.car_id.key}.{Car.chapa.key}': 'chapa',
+            f'{Queue.persone_id.key}.{Persone.name.key}': 'nombre',
+        },
+        axis=1,
+        inplace=True
+    )
+    await send_telegram_xlsx(
+        matrix,
+        "cola"
+    )
+    return export_xlsx(
+        matrix,
+        "cola"
+    )
 
 
 @admin_routes.delete("/queue_process")

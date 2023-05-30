@@ -1,4 +1,10 @@
-from sqlalchemy import inspect, CursorResult, delete, ChunkedIteratorResult
+from sqlalchemy import (
+    CursorResult,
+    delete,
+    ChunkedIteratorResult,
+    Table,
+    inspect
+)
 from sqlalchemy.orm import Session
 
 from engine import set_session, engine, metadata_obj
@@ -11,9 +17,13 @@ class NotFoundError(Exception):
     pass
 
 
-def get_table(table_name):
+def table_names():
     insp = inspect(engine)
-    if table_name in [*insp.get_table_names(), *insp.get_view_names()]:
+    return {*insp.get_table_names(), *insp.get_view_names()}
+
+
+def get_table(table_name):
+    if table_name in table_names():
         return Table(
             table_name,
             metadata_obj,

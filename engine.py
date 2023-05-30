@@ -63,6 +63,7 @@ def set_session(func):
                 _session.commit()
             finally:
                 pass
+
         return result
 
     return decorator
